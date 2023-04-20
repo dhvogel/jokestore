@@ -110,12 +110,31 @@ func main() {
 					fmt.Printf("\nGot jokes for category %s:\n\n", jokeCategory)
 					for _, j := range jokeStore.Jokes {
 						if slices.Contains(j.Categories, jokeCategory) {
-							fmt.Printf("%s\n%s", j.Content, j.Categories)
-							if showIds {
-								fmt.Printf("\nID: %d", j.ID)
-							}
-							fmt.Printf("\n\n")
+							printJoke(j, showIds)
 						}
+					}
+					return nil
+				},
+			},
+			{
+				Name:        "find",
+				Usage:       "find jokes",
+				Description: "find jokes",
+				Action: func(c *cli.Context) error {
+					subStr := c.Args().Get(0)
+					jokeStore, err := readJokeStore(jokesFile)
+					if err != nil {
+						return cli.Exit(fmt.Sprintf("error reading jokes file %s: %v", jokesFile, err), 1)
+					}
+					found := []Joke{}
+					for _, j := range jokeStore.Jokes {
+						if strings.Contains(j.Content, subStr) {
+							found = append(found, j)
+						}
+					}
+					fmt.Printf("\nGot jokes with substring '%s':\n\n", subStr)
+					for _, f := range found {
+						printJoke(f, true)
 					}
 					return nil
 				},
@@ -166,6 +185,14 @@ func main() {
 	}
 
 	_ = app.Run(os.Args)
+}
+
+func printJoke(j Joke, showId bool) {
+	fmt.Printf("%s\n%s", j.Content, j.Categories)
+	if showId {
+		fmt.Printf("\nID: %d", j.ID)
+	}
+	fmt.Printf("\n\n")
 }
 
 func readJokeStore(fileLocation string) (*JokeStore, error) {
