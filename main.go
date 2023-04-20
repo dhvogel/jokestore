@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
 	"hash/fnv"
@@ -10,8 +11,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/bit101/go-ansi"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/exp/slices"
+	"golang.org/x/term"
 )
 
 type JokeStore struct {
@@ -60,31 +63,90 @@ func main() {
 				Usage:       "add a joke",
 				Description: "add a joke",
 				// Both content and categories are needed to add a joke
-				Flags: []cli.Flag{
-					&cli.StringFlag{Name: "content", Required: true},
-					&cli.StringSliceFlag{Name: "categories", Required: true},
-				},
 				Action: func(c *cli.Context) error {
-					jokeContent := c.String("content")
-					jokeCategories := c.StringSlice("categories")
-					// 1. Read the list of jokes
+					fmt.Printf("Content: ")
+					reader := bufio.NewReader(os.Stdin)
+					input, _ := reader.ReadString('\n')
+					jokeContent := strings.TrimSpace(string([]byte(input)))
+
+					fmt.Printf("jokeContent %s\n", jokeContent)
+					fmt.Printf("Categories: ")
+					oldState, err := term.MakeRaw(int(os.Stdin.Fd()))
+					if err != nil {
+						fmt.Println(err)
+						return nil
+					}
+					defer term.Restore(int(os.Stdin.Fd()), oldState)
+
 					jokeStore, err := readJokeStore(jokesFile)
 					if err != nil {
 						return cli.Exit(fmt.Sprintf("error reading jokes file %s: %v", jokesFile, err), 1)
 					}
-					for _, c := range jokeCategories {
-						if !slices.Contains(jokeStore.Categories, c) {
-							return cli.Exit(fmt.Sprintf("error: category '%s' not in list of categories", c), 1)
+
+					stringInput := ""
+					b := make([]byte, 1)
+					completionLength := 0
+					var match *string
+					shouldBackspace := false
+					for string(b[0]) != "\r" {
+						_, err = os.Stdin.Read(b)
+						if string(b[0]) == "\r" {
+							break
 						}
+						stringInput += string(b[0])
+						if shouldBackspace {
+							ansi.Backspace(completionLength)
+						}
+						shouldBackspace = false
+						fmt.Printf(strings.ToUpper(string(b[0])))
+						if err != nil {
+							fmt.Println(err)
+							return nil
+						}
+						for _, j := range jokeStore.Categories {
+							if strings.HasPrefix(j, strings.ToUpper(stringInput)) {
+								ansi.SetReversed(true)
+								fmt.Printf("%s", j[len(stringInput):])
+								completionLength = len(j[len(stringInput):])
+								match = &j
+								shouldBackspace = true
+								break
+							} else {
+								match = nil
+								ansi.ClearLine()
+								fmt.Printf("Categories: %s", strings.ToUpper(stringInput))
+							}
+						}
+						ansi.SetReversed(false)
 					}
-					// 2. Add a new joke to the list in memory
-					newJokeStore := addJoke(*jokeStore, jokeContent, jokeCategories)
-					// 3. Write the list back out to the joke file
-					err = writeJokes(newJokeStore, jokesFile)
-					if err != nil {
-						return cli.Exit(fmt.Sprintf("error: could not write joke: %v", err), 1)
+					cat := strings.ToUpper(stringInput)
+					if match != nil {
+						cat = *match
 					}
+					ansi.ClearLine()
+					fmt.Printf("Categories: %s\n", cat)
 					return nil
+					// input, _ = reader.ReadString('\n')
+					// jokeCategories := strings.Split(strings.TrimSpace(string([]byte(input))), ",")
+
+					// 1. Read the list of jokes
+					// jokeStore, err := readJokeStore(jokesFile)
+					// if err != nil {
+					// 	return cli.Exit(fmt.Sprintf("error reading jokes file %s: %v", jokesFile, err), 1)
+					// }
+					// for _, c := range jokeCategories {
+					// 	if !slices.Contains(jokeStore.Categories, c) {
+					// 		return cli.Exit(fmt.Sprintf("error: category '%s' not in list of categories", c), 1)
+					// 	}
+					// }
+					// // 2. Add a new joke to the list in memory
+					// newJokeStore := addJoke(*jokeStore, jokeContent, jokeCategories)
+					// // 3. Write the list back out to the joke file
+					// err = writeJokes(newJokeStore, jokesFile)
+					// if err != nil {
+					// 	return cli.Exit(fmt.Sprintf("error: could not write joke: %v", err), 1)
+					// }
+					// return nil
 				},
 			},
 			{
