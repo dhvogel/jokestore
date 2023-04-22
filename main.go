@@ -83,53 +83,95 @@ func main() {
 						return cli.Exit(fmt.Sprintf("error reading jokes file %s: %v", jokesFile, err), 1)
 					}
 
-					stringInput := ""
+					// Hacky way to get three categories and autocomplete
+					// where possible.
+					i := 0
+					categories := []string{}
+					for i < 3 {
+						stringInput := ""
+						b := make([]byte, 1)
+						var match *string
+						// Keep looking for input until it's a return char
+						// which is handled later
+						for true {
+							// Read in the typed character
+							_, err = os.Stdin.Read(b)
+							if err != nil {
+								fmt.Println(err)
+								return nil
+							}
+							// If it's a return, accept it as a category
+							if string(b[0]) == "\r" {
+								break
+							}
+							// Keep track of the entire input, character by character
+							// TODO: handle delete
+							stringInput += string(b[0])
+							// Print the new character
+							fmt.Printf(strings.ToUpper(string(b[0])))
+							// Check the joke list to see if any categories are prefixed
+							// with the string input. There aren't that many categories,
+							// in theory.
+							for _, j := range jokeStore.Categories {
+								if strings.HasPrefix(j, strings.ToUpper(stringInput)) {
+									// Reverse color to differentiate between typed and completion
+									ansi.SetReversed(true)
+									// Print the rest of the match to show the suggestion
+									fmt.Printf("%s", j[len(stringInput):])
+									// Set the match, in case the next character is '\r'
+									match = &j
+									break
+								} else {
+									// Unset the match, because now the category is new.
+									match = nil
+									// Reset because this avoids saying
+									// "GHANDMA" instead of "GH"
+									ansi.ClearLine()
+									fmt.Printf("Categories: %s", strings.ToUpper(stringInput))
+								}
+							}
+							ansi.SetReversed(false)
+						}
+						// If it's a match, add the matched category.
+						// If not, just add the typed string.
+						cat := strings.ToUpper(stringInput)
+						if match != nil {
+							cat = *match
+						}
+						// Append it to the list of categories
+						categories = append(categories, cat)
+						// Show the categories before the next one is typed
+						ansi.ClearLine()
+						fmt.Printf("Categories: %s ", categories)
+						// Increment i, for now this sets categories to 3 per joke
+						i++
+					}
+
+					ansi.NewLine()
+					fmt.Println("Press enter to confirm, 'a' to abort.")
+
 					b := make([]byte, 1)
-					completionLength := 0
-					var match *string
-					shouldBackspace := false
-					for string(b[0]) != "\r" {
+					for true {
+						// Read in the typed character
 						_, err = os.Stdin.Read(b)
-						if string(b[0]) == "\r" {
-							break
-						}
-						stringInput += string(b[0])
-						if shouldBackspace {
-							ansi.Backspace(completionLength)
-						}
-						shouldBackspace = false
-						fmt.Printf(strings.ToUpper(string(b[0])))
 						if err != nil {
 							fmt.Println(err)
 							return nil
 						}
-						for _, j := range jokeStore.Categories {
-							if strings.HasPrefix(j, strings.ToUpper(stringInput)) {
-								ansi.SetReversed(true)
-								fmt.Printf("%s", j[len(stringInput):])
-								completionLength = len(j[len(stringInput):])
-								match = &j
-								shouldBackspace = true
-								break
-							} else {
-								match = nil
-								ansi.ClearLine()
-								fmt.Printf("Categories: %s", strings.ToUpper(stringInput))
-							}
+						if string(b[0]) == "a" {
+							return cli.Exit("Aborted joke add.", 1)
 						}
-						ansi.SetReversed(false)
+						// If it's a return, accept it as a category
+						if string(b[0]) == "\r" {
+							break
+						}
 					}
-					cat := strings.ToUpper(stringInput)
-					if match != nil {
-						cat = *match
-					}
-					ansi.ClearLine()
-					fmt.Printf("Categories: %s\n", cat)
+
 					return nil
 					// input, _ = reader.ReadString('\n')
 					// jokeCategories := strings.Split(strings.TrimSpace(string([]byte(input))), ",")
 
-					// 1. Read the list of jokes
+					// //1. Read the list of jokes
 					// jokeStore, err := readJokeStore(jokesFile)
 					// if err != nil {
 					// 	return cli.Exit(fmt.Sprintf("error reading jokes file %s: %v", jokesFile, err), 1)
