@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"sort"
 	"strings"
 	"time"
 
@@ -322,9 +323,16 @@ func addJoke(existingStore JokeStore, newJokeContent string, newJokeCategories [
 		Content:    newJokeContent,
 		Categories: newJokeCategories,
 	}
+	categories := existingStore.Categories
+	for _, c := range newJokeCategories {
+		if !slices.Contains(categories, c) {
+			categories = append(categories, c)
+		}
+	}
+	sort.Strings(categories)
 	newJokeStore := JokeStore{
 		Jokes:      append(existingStore.Jokes, newJoke),
-		Categories: existingStore.Categories,
+		Categories: categories,
 		Shows:      existingStore.Shows,
 	}
 	return newJokeStore
