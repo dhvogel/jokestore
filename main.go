@@ -68,8 +68,6 @@ func main() {
 					reader := bufio.NewReader(os.Stdin)
 					input, _ := reader.ReadString('\n')
 					jokeContent := strings.TrimSpace(string([]byte(input)))
-
-					fmt.Printf("jokeContent %s\n", jokeContent)
 					fmt.Printf("Categories: ")
 					oldState, err := term.MakeRaw(int(os.Stdin.Fd()))
 					if err != nil {
@@ -95,11 +93,25 @@ func main() {
 						// which is handled later
 						for true {
 							// Read in the typed character
-							_, err = os.Stdin.Read(b)
+							_, err := os.Stdin.Read(b)
 							if err != nil {
 								fmt.Println(err)
 								return nil
 							}
+
+							// This is a hack to delete a character with the
+							// '=' sign because I can't figure out how to read
+							// the actual delete character.
+							if string(b[0]) == "=" {
+								if stringInput == "" {
+									continue
+								}
+								stringInput = stringInput[:len(stringInput)-1]
+								ansi.ClearLine()
+								fmt.Printf("Categories: %s", strings.ToUpper(stringInput))
+								continue
+							}
+
 							// If it's a return, accept it as a category
 							if string(b[0]) == "\r" {
 								break
@@ -146,9 +158,9 @@ func main() {
 						// Increment i, for now this sets categories to 3 per joke
 						i++
 					}
-
 					ansi.NewLine()
-					fmt.Println("Press enter to confirm, 'a' to abort.")
+					ansi.CarriageReturn()
+					fmt.Printf("Press enter to confirm, 'a' to abort.")
 
 					b := make([]byte, 1)
 					for true {
@@ -159,6 +171,8 @@ func main() {
 							return nil
 						}
 						if string(b[0]) == "a" {
+							ansi.NewLine()
+							ansi.CarriageReturn()
 							return cli.Exit("Aborted joke add.", 1)
 						}
 						// If it's a return, accept it as a category
@@ -166,29 +180,16 @@ func main() {
 							break
 						}
 					}
-
+					term.Restore(int(os.Stdin.Fd()), oldState)
+					// 2. Add a new joke to the list in memory
+					newJokeStore := addJoke(*jokeStore, jokeContent, categories)
+					// 3. Write the list back out to the joke file
+					err = writeJokes(newJokeStore, jokesFile)
+					if err != nil {
+						return cli.Exit(fmt.Sprintf("error: could not write joke: %v", err), 1)
+					}
+					fmt.Printf("\nJoke added!\n")
 					return nil
-					// input, _ = reader.ReadString('\n')
-					// jokeCategories := strings.Split(strings.TrimSpace(string([]byte(input))), ",")
-
-					// //1. Read the list of jokes
-					// jokeStore, err := readJokeStore(jokesFile)
-					// if err != nil {
-					// 	return cli.Exit(fmt.Sprintf("error reading jokes file %s: %v", jokesFile, err), 1)
-					// }
-					// for _, c := range jokeCategories {
-					// 	if !slices.Contains(jokeStore.Categories, c) {
-					// 		return cli.Exit(fmt.Sprintf("error: category '%s' not in list of categories", c), 1)
-					// 	}
-					// }
-					// // 2. Add a new joke to the list in memory
-					// newJokeStore := addJoke(*jokeStore, jokeContent, jokeCategories)
-					// // 3. Write the list back out to the joke file
-					// err = writeJokes(newJokeStore, jokesFile)
-					// if err != nil {
-					// 	return cli.Exit(fmt.Sprintf("error: could not write joke: %v", err), 1)
-					// }
-					// return nil
 				},
 			},
 			{
