@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/bit101/go-ansi"
+	"github.com/manifoldco/promptui"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/exp/slices"
 	"golang.org/x/term"
@@ -25,11 +26,13 @@ type JokeStore struct {
 }
 
 type Show struct {
-	ID       uint32
-	Jokes    []string // list of jokeIDs
-	Notes    string
-	Location string
-	Time     time.Time
+	ID uint32
+	// deprecated
+	Jokes       []string // list of jokeIDs
+	JokeResults []JokeResult
+	Notes       string
+	Location    string
+	Time        time.Time
 }
 
 type Joke struct {
@@ -37,6 +40,12 @@ type Joke struct {
 	Content    string
 	Categories []string
 	TimeAdded  time.Time
+}
+
+type JokeResult struct {
+	JokeID          string
+	UpperBoundGrade string
+	LowerBoundGrade string
 }
 
 const (
@@ -84,104 +93,17 @@ func main() {
 					}
 					defer term.Restore(int(os.Stdin.Fd()), oldState)
 
-					// Hacky way to get three categories and autocomplete
-					// where possible.
-					i := 0
-					categories := []string{}
-					b := make([]byte, 1)
-					lastOneWasAReturn := false
-					// Max of 10 categories
-					for i < 10 {
-						stringInput := ""
-						b = make([]byte, 1)
-						var match *string
-						// Keep looking for input until it's a return char
-						// which is handled later
-						for true {
-							// Read in the typed character
-							_, err := os.Stdin.Read(b)
-							if err != nil {
-								fmt.Println(err)
-								return nil
-							}
-
-							// This is a hack to delete a character with the
-							// '=' sign because I can't figure out how to read
-							// the actual delete character.
-							if string(b[0]) == "=" {
-								if stringInput == "" {
-									continue
-								}
-								stringInput = stringInput[:len(stringInput)-1]
-								ansi.ClearLine()
-								fmt.Printf("Categories: %s", strings.ToUpper(stringInput))
-								continue
-							}
-
-							// If it's a return, accept it as a category
-							if string(b[0]) == "\r" {
-								// This code works, and it's comedy. The idea is that a double return
-								// ends the category entering, so `lastOneWasAReturn` keeps track if the
-								// last button press was also a return. If the last one was a return
-								// and this one is a return, then exit the loop by setting i to 10.
-								if lastOneWasAReturn {
-									i = 10
-								}
-								lastOneWasAReturn = true
-								break
-							}
-							lastOneWasAReturn = false
-							// Keep track of the entire input, character by character
-							// TODO: handle delete
-							stringInput += string(b[0])
-							// Print the new character
-							fmt.Printf(strings.ToUpper(string(b[0])))
-							// Check the joke list to see if any categories are prefixed
-							// with the string input. There aren't that many categories,
-							// in theory.
-							for _, j := range jokeStore.Categories {
-								if strings.HasPrefix(j, strings.ToUpper(stringInput)) {
-									// Reverse color to differentiate between typed and completion
-									ansi.SetReversed(true)
-									// Print the rest of the match to show the suggestion
-									fmt.Printf("%s", j[len(stringInput):])
-									// Set the match, in case the next character is '\r'
-									match = &j
-									break
-								} else {
-									// Unset the match, because now the category is new.
-									match = nil
-									// Reset because this avoids saying
-									// "GHANDMA" instead of "GH"
-									ansi.ClearLine()
-									fmt.Printf("Categories: %s", strings.ToUpper(stringInput))
-								}
-							}
-							ansi.SetReversed(false)
-						}
-						// The string input is the empty string in the double return case
-						if stringInput == "" {
-							continue
-						}
-						// If it's a match, add the matched category.
-						// If not, just add the typed string.
-						cat := strings.ToUpper(stringInput)
-						if match != nil {
-							cat = *match
-						}
-						// Append it to the list of categories
-						categories = append(categories, cat)
-						// Show the categories before the next one is typed
-						ansi.ClearLine()
-						fmt.Printf("Categories: %s ", categories)
-						// Increment i, for now this sets categories to 3 per joke
-						i++
+					categories, err := getCategoriesFromCommandLine(jokeStore.Categories)
+					if err != nil {
+						fmt.Println(err)
+						return nil
 					}
+
 					ansi.NewLine()
 					ansi.CarriageReturn()
 					fmt.Printf("Press enter to confirm, 'a' to abort.")
 
-					b = make([]byte, 1)
+					b := make([]byte, 1)
 					for true {
 						// Read in the typed character
 						_, err = os.Stdin.Read(b)
@@ -270,39 +192,56 @@ func main() {
 						Name:        "add",
 						Usage:       "add a show",
 						Description: "add a show",
-						// Flags: []cli.Flag{
-						// 	// IDs of jokes told at the show
-						// 	&cli.StringSliceFlag{Name: "jokes", Required: false},
-						// 	// Timestamp of show (example time: 2019-08-12T15:04:05)
-						// 	&cli.TimestampFlag{Name: "time", Layout: "2006-01-02T15:04:05", Required: true},
-						// 	// Notes for the show
-						// 	&cli.StringFlag{Name: "notes", Required: false},
-						// },
 						Action: func(c *cli.Context) error {
 							fmt.Printf("Location: ")
 							reader := bufio.NewReader(os.Stdin)
 							input, _ := reader.ReadString('\n')
 							location := strings.TrimSpace(string([]byte(input)))
 
-							if false {
-								fmt.Printf("%s", location)
-							}
-
-							// jokeStore, err := readJokeStore(jokesFile)
-							// if err != nil {
-							// 	return cli.Exit(fmt.Sprintf("error reading jokes file %s: %v", jokesFile, err), 1)
-							// }
-
-							// search for jokes dynamically, on each key press
-							oldState, err := term.MakeRaw(int(os.Stdin.Fd()))
+							jokeStore, err := readJokeStore(jokesFile)
 							if err != nil {
-								fmt.Println(err)
-								return nil
+								return cli.Exit(fmt.Sprintf("error reading jokes file %s: %v", jokesFile, err), 1)
 							}
-							defer term.Restore(int(os.Stdin.Fd()), oldState)
 
-							// jokes := c.StringSlice("jokes")
-							// notes := c.String("notes")
+							jokes := []Joke{}
+							addAnotherJoke := true
+
+							for addAnotherJoke {
+								prompt := promptui.Select{
+									Label: "Add Joke?",
+									Items: []string{"Y", "N"},
+								}
+								_, result, err := prompt.Run()
+								if err != nil {
+									fmt.Printf("Prompt failed %v\n", err)
+									return nil
+								}
+								if result == "N" {
+									addAnotherJoke = false
+								} else {
+									joke, err := getJokeFromCommandLine(jokeStore.Jokes)
+									if err != nil {
+										fmt.Printf("err: %v", err)
+										return nil
+									}
+									upperBound, lowerBound, err := getJokeGradeFromCommandLine()
+									jokes = append(jokes, *joke)
+								}
+							}
+
+							fmt.Printf("Notes: ")
+							reader = bufio.NewReader(os.Stdin)
+							input, _ = reader.ReadString('\n')
+							notes := strings.TrimSpace(string([]byte(input)))
+
+							fmt.Printf("Time (MM/DD/YYYY): ")
+							reader = bufio.NewReader(os.Stdin)
+							input, _ = reader.ReadString('\n')
+							date := strings.TrimSpace(string([]byte(input)))
+							parsedDate, err := time.Parse("01/02/2006", date)
+
+							fmt.Printf("got location %s, jokes, %v, notes, %s, date %v", location, jokes, notes, parsedDate)
+
 							// time := c.Timestamp("time")
 
 							// // 1. Read the jokestore
@@ -328,6 +267,176 @@ func main() {
 	}
 
 	_ = app.Run(os.Args)
+}
+
+func getJokeGradeFromCommandLine() (*string, *string, error) {
+	validate := func(input string) error {
+		if !slices.Contains([]string{"A", "B", "C", "D", "E", "F"}, input) {
+			return fmt.Errorf("invalid string")
+		}
+		return nil
+	}
+	prompt := promptui.Prompt{
+		Label:    "Grade - Upper Bound",
+		Validate: validate,
+	}
+	upperBound, err := prompt.Run()
+	if err != nil {
+		return nil, nil, err
+	}
+	validate = func(input string) error {
+		if !slices.Contains([]string{"A", "B", "C", "D", "E", "F"}, input) {
+			return fmt.Errorf("invalid string")
+		}
+		return nil
+	}
+	prompt = promptui.Prompt{
+		Label:    "Grade - Lower Bound",
+		Validate: validate,
+	}
+	lowerBound, err := prompt.Run()
+	if err != nil {
+		return nil, nil, err
+	}
+	return &upperBound, &lowerBound, nil
+
+}
+
+// Requires that the terminal is in raw state
+func getJokeFromCommandLine(existingJokes []Joke) (*Joke, error) {
+	validate := func(input string) error {
+		if len(input) < 1 {
+			return fmt.Errorf("invalid string")
+		}
+		return nil
+	}
+	prompt := promptui.Prompt{
+		Label:    "Joke Content",
+		Validate: validate,
+	}
+	result, err := prompt.Run()
+	if err != nil {
+		fmt.Printf("Prompt failed %v\n", err)
+		return nil, nil
+	}
+	options := []Joke{}
+	contentOptions := []string{}
+	for _, j := range existingJokes {
+		if strings.Contains(strings.ToUpper(j.Content), strings.ToUpper(result)) {
+			options = append(options, j)
+		}
+	}
+	for _, o := range options {
+		contentOptions = append(contentOptions, o.Content)
+	}
+	selectPrompt := promptui.Select{
+		Label: "Select Joke",
+		Items: contentOptions,
+	}
+	i, result, err := selectPrompt.Run()
+	if err != nil {
+		fmt.Printf("Prompt failed %v\n", err)
+		return nil, nil
+	}
+	fmt.Printf("You choose %q\n", result)
+	return &options[i], nil
+}
+
+// Requires that the terminal is in raw state
+func getCategoriesFromCommandLine(existingCategories []string) ([]string, error) {
+	// Hacky way to get three categories and autocomplete
+	// where possible.
+	i := 0
+	categories := []string{}
+	b := make([]byte, 1)
+	lastOneWasAReturn := false
+	// Max of 10 categories
+	for i < 10 {
+		stringInput := ""
+		b = make([]byte, 1)
+		var match *string
+		// Keep looking for input until it's a return char
+		// which is handled later
+		for true {
+			// Read in the typed character
+			_, err := os.Stdin.Read(b)
+			if err != nil {
+				return nil, err
+			}
+
+			// This is a hack to delete a character with the
+			// '=' sign because I can't figure out how to read
+			// the actual delete character.
+			if string(b[0]) == "=" {
+				if stringInput == "" {
+					continue
+				}
+				stringInput = stringInput[:len(stringInput)-1]
+				ansi.ClearLine()
+				fmt.Printf("Categories: %s", strings.ToUpper(stringInput))
+				continue
+			}
+
+			// If it's a return, accept it as a category
+			if string(b[0]) == "\r" {
+				// This code works, and it's comedy. The idea is that a double return
+				// ends the category entering, so `lastOneWasAReturn` keeps track if the
+				// last button press was also a return. If the last one was a return
+				// and this one is a return, then exit the loop by setting i to 10.
+				if lastOneWasAReturn {
+					i = 10
+				}
+				lastOneWasAReturn = true
+				break
+			}
+			lastOneWasAReturn = false
+			// Keep track of the entire input, character by character
+			// TODO: handle delete
+			stringInput += string(b[0])
+			// Print the new character
+			fmt.Printf(strings.ToUpper(string(b[0])))
+			// Check the joke list to see if any categories are prefixed
+			// with the string input. There aren't that many categories,
+			// in theory.
+			for _, j := range existingCategories {
+				if strings.HasPrefix(j, strings.ToUpper(stringInput)) {
+					// Reverse color to differentiate between typed and completion
+					ansi.SetReversed(true)
+					// Print the rest of the match to show the suggestion
+					fmt.Printf("%s", j[len(stringInput):])
+					// Set the match, in case the next character is '\r'
+					match = &j
+					break
+				} else {
+					// Unset the match, because now the category is new.
+					match = nil
+					// Reset because this avoids saying
+					// "GHANDMA" instead of "GH"
+					ansi.ClearLine()
+					fmt.Printf("Categories: %s", strings.ToUpper(stringInput))
+				}
+			}
+			ansi.SetReversed(false)
+		}
+		// The string input is the empty string in the double return case
+		if stringInput == "" {
+			continue
+		}
+		// If it's a match, add the matched category.
+		// If not, just add the typed string.
+		cat := strings.ToUpper(stringInput)
+		if match != nil {
+			cat = *match
+		}
+		// Append it to the list of categories
+		categories = append(categories, cat)
+		// Show the categories before the next one is typed
+		ansi.ClearLine()
+		fmt.Printf("Categories: %s ", categories)
+		// Increment i, for now this sets categories to 3 per joke
+		i++
+	}
+	return categories, nil
 }
 
 func printJoke(j Joke, showId bool) {
