@@ -36,6 +36,7 @@ type Joke struct {
 	ID         uint32
 	Content    string
 	Categories []string
+	TimeAdded  time.Time
 }
 
 const (
@@ -70,6 +71,12 @@ func main() {
 					input, _ := reader.ReadString('\n')
 					jokeContent := strings.TrimSpace(string([]byte(input)))
 					fmt.Printf("Categories: ")
+
+					jokeStore, err := readJokeStore(jokesFile)
+					if err != nil {
+						return cli.Exit(fmt.Sprintf("error reading jokes file %s: %v", jokesFile, err), 1)
+					}
+
 					oldState, err := term.MakeRaw(int(os.Stdin.Fd()))
 					if err != nil {
 						fmt.Println(err)
@@ -77,18 +84,16 @@ func main() {
 					}
 					defer term.Restore(int(os.Stdin.Fd()), oldState)
 
-					jokeStore, err := readJokeStore(jokesFile)
-					if err != nil {
-						return cli.Exit(fmt.Sprintf("error reading jokes file %s: %v", jokesFile, err), 1)
-					}
-
 					// Hacky way to get three categories and autocomplete
 					// where possible.
 					i := 0
 					categories := []string{}
-					for i < 3 {
+					b := make([]byte, 1)
+					lastOneWasAReturn := false
+					// Max of 10 categories
+					for i < 10 {
 						stringInput := ""
-						b := make([]byte, 1)
+						b = make([]byte, 1)
 						var match *string
 						// Keep looking for input until it's a return char
 						// which is handled later
@@ -115,8 +120,17 @@ func main() {
 
 							// If it's a return, accept it as a category
 							if string(b[0]) == "\r" {
+								// This code works, and it's comedy. The idea is that a double return
+								// ends the category entering, so `lastOneWasAReturn` keeps track if the
+								// last button press was also a return. If the last one was a return
+								// and this one is a return, then exit the loop by setting i to 10.
+								if lastOneWasAReturn {
+									i = 10
+								}
+								lastOneWasAReturn = true
 								break
 							}
+							lastOneWasAReturn = false
 							// Keep track of the entire input, character by character
 							// TODO: handle delete
 							stringInput += string(b[0])
@@ -145,6 +159,10 @@ func main() {
 							}
 							ansi.SetReversed(false)
 						}
+						// The string input is the empty string in the double return case
+						if stringInput == "" {
+							continue
+						}
 						// If it's a match, add the matched category.
 						// If not, just add the typed string.
 						cat := strings.ToUpper(stringInput)
@@ -163,7 +181,7 @@ func main() {
 					ansi.CarriageReturn()
 					fmt.Printf("Press enter to confirm, 'a' to abort.")
 
-					b := make([]byte, 1)
+					b = make([]byte, 1)
 					for true {
 						// Read in the typed character
 						_, err = os.Stdin.Read(b)
@@ -252,36 +270,55 @@ func main() {
 						Name:        "add",
 						Usage:       "add a show",
 						Description: "add a show",
-						Flags: []cli.Flag{
-							// IDs of jokes told at the show
-							&cli.StringSliceFlag{Name: "jokes", Required: false},
-							// Physical location of show
-							&cli.StringFlag{Name: "location", Required: false},
-							// Timestamp of show (example time: 2019-08-12T15:04:05)
-							&cli.TimestampFlag{Name: "time", Layout: "2006-01-02T15:04:05", Required: true},
-							// Notes for the show
-							&cli.StringFlag{Name: "notes", Required: false},
-						},
+						// Flags: []cli.Flag{
+						// 	// IDs of jokes told at the show
+						// 	&cli.StringSliceFlag{Name: "jokes", Required: false},
+						// 	// Timestamp of show (example time: 2019-08-12T15:04:05)
+						// 	&cli.TimestampFlag{Name: "time", Layout: "2006-01-02T15:04:05", Required: true},
+						// 	// Notes for the show
+						// 	&cli.StringFlag{Name: "notes", Required: false},
+						// },
 						Action: func(c *cli.Context) error {
-							jokes := c.StringSlice("jokes")
-							location := c.String("location")
-							notes := c.String("notes")
-							time := c.Timestamp("time")
+							fmt.Printf("Location: ")
+							reader := bufio.NewReader(os.Stdin)
+							input, _ := reader.ReadString('\n')
+							location := strings.TrimSpace(string([]byte(input)))
 
-							// 1. Read the jokestore
-							jokeStore, err := readJokeStore(jokesFile)
-							if err != nil {
-								return cli.Exit(fmt.Sprintf("error reading jokes file %s: %v", jokesFile, err), 1)
+							if false {
+								fmt.Printf("%s", location)
 							}
 
-							// 2. Add a new show
-							newJokeStore := addShow(*jokeStore, jokes, *time, notes, location)
+							// jokeStore, err := readJokeStore(jokesFile)
+							// if err != nil {
+							// 	return cli.Exit(fmt.Sprintf("error reading jokes file %s: %v", jokesFile, err), 1)
+							// }
 
-							// 3. Write the list back out to the joke file
-							err = writeJokes(newJokeStore, jokesFile)
+							// search for jokes dynamically, on each key press
+							oldState, err := term.MakeRaw(int(os.Stdin.Fd()))
 							if err != nil {
-								return cli.Exit(fmt.Sprintf("error: could not write joke: %v", err), 1)
+								fmt.Println(err)
+								return nil
 							}
+							defer term.Restore(int(os.Stdin.Fd()), oldState)
+
+							// jokes := c.StringSlice("jokes")
+							// notes := c.String("notes")
+							// time := c.Timestamp("time")
+
+							// // 1. Read the jokestore
+							// jokeStore, err := readJokeStore(jokesFile)
+							// if err != nil {
+							// 	return cli.Exit(fmt.Sprintf("error reading jokes file %s: %v", jokesFile, err), 1)
+							// }
+
+							// // 2. Add a new show
+							// newJokeStore := addShow(*jokeStore, jokes, *time, notes, location)
+
+							// // 3. Write the list back out to the joke file
+							// err = writeJokes(newJokeStore, jokesFile)
+							// if err != nil {
+							// 	return cli.Exit(fmt.Sprintf("error: could not write joke: %v", err), 1)
+							// }
 							return nil
 						},
 					},
@@ -322,6 +359,7 @@ func addJoke(existingStore JokeStore, newJokeContent string, newJokeCategories [
 		ID:         createHash(fmt.Sprintf("%s:%s", newJokeContent, strings.Join(newJokeCategories[:], ","))),
 		Content:    newJokeContent,
 		Categories: newJokeCategories,
+		TimeAdded:  time.Now(),
 	}
 	categories := existingStore.Categories
 	for _, c := range newJokeCategories {
