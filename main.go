@@ -176,36 +176,56 @@ func main() {
 								_, result, err := prompt.Run()
 								if err != nil {
 									fmt.Printf("Prompt failed %v\n", err)
-									return nil
+									continue
 								}
 								if result == "N" {
 									addAnotherJoke = false
 								} else {
 									joke, otherOption, err := getJokeFromCommandLine(jokeStore.Jokes)
 									if err != nil {
-										return cli.Exit(err, 1)
+										fmt.Println(err)
 									}
 									if otherOption == "Add Joke" {
 										jokeContent, err := getJokeContentFromCommandLine()
 										if err != nil {
-											return cli.Exit(err, 1)
+											fmt.Println(err)
 										}
-										fmt.Printf("got ")
+										fmt.Printf("Categories: ")
 										jokeCategories, err := makeTermRawAndGetCategories(jokeStore.Categories)
 										if err != nil {
-											return cli.Exit(err, 1)
+											fmt.Println(err)
 										}
 										newJoke, newJokeStore := addJoke(*jokeStore, *jokeContent, jokeCategories)
 										err = writeJokes(newJokeStore, jokesFile)
 										joke = newJoke
 									}
 									upperBound, lowerBound, err := getJokeGradeFromCommandLine()
-									jokeResult := JokeResult{
-										JokeID:          joke.ID,
-										UpperBoundGrade: *upperBound,
-										LowerBoundGrade: *lowerBound,
+									if err != nil {
+										fmt.Println(err)
 									}
-									jokeResults = append(jokeResults, jokeResult)
+									if upperBound != nil && lowerBound != nil {
+										jokeResult := JokeResult{
+											JokeID:          joke.ID,
+											UpperBoundGrade: *upperBound,
+											LowerBoundGrade: *lowerBound,
+										}
+										jokeResults = append(jokeResults, jokeResult)
+									}
+								}
+								if !addAnotherJoke {
+									prompt = promptui.Select{
+										Label: "Finish show joke entry?",
+										Items: []string{"Y", "N"},
+									}
+									_, result, err := prompt.Run()
+									if err != nil {
+										fmt.Printf("Prompt failed %v\n", err)
+										addAnotherJoke = true
+										continue
+									}
+									if result == "N" {
+										addAnotherJoke = true
+									}
 								}
 							}
 
@@ -283,9 +303,6 @@ func makeTermRawAndGetCategories(existingCategories []string) ([]string, error) 
 
 func getJokeContentFromCommandLine() (*string, error) {
 	validate := func(input string) error {
-		if len(input) < 1 {
-			return fmt.Errorf("invalid string")
-		}
 		return nil
 	}
 	prompt := promptui.Prompt{
@@ -341,7 +358,7 @@ func getJokeFromCommandLine(existingJokes []Joke) (*Joke, string, error) {
 		return nil
 	}
 	prompt := promptui.Prompt{
-		Label:    "Joke Content",
+		Label:    "Joke Content Fragment (ONLY PART OF THE JOKE)",
 		Validate: validate,
 	}
 	result, err := prompt.Run()
