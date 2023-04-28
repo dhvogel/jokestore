@@ -85,45 +85,12 @@ func main() {
 					if err != nil {
 						return cli.Exit(fmt.Sprintf("error reading jokes file %s: %v", jokesFile, err), 1)
 					}
-
-					oldState, err := term.MakeRaw(int(os.Stdin.Fd()))
+					categories, err := makeTermRawAndGetCategories(jokeStore.Categories)
 					if err != nil {
-						fmt.Println(err)
-						return nil
+						return cli.Exit(err, 1)
 					}
-					defer term.Restore(int(os.Stdin.Fd()), oldState)
-
-					categories, err := getCategoriesFromCommandLine(jokeStore.Categories)
-					if err != nil {
-						fmt.Println(err)
-						return nil
-					}
-
-					ansi.NewLine()
-					ansi.CarriageReturn()
-					fmt.Printf("Press enter to confirm, 'a' to abort.")
-
-					b := make([]byte, 1)
-					for true {
-						// Read in the typed character
-						_, err = os.Stdin.Read(b)
-						if err != nil {
-							fmt.Println(err)
-							return nil
-						}
-						if string(b[0]) == "a" {
-							ansi.NewLine()
-							ansi.CarriageReturn()
-							return cli.Exit("Aborted joke add.", 1)
-						}
-						// If it's a return, accept it as a category
-						if string(b[0]) == "\r" {
-							break
-						}
-					}
-					term.Restore(int(os.Stdin.Fd()), oldState)
 					// 2. Add a new joke to the list in memory
-					newJokeStore := addJoke(*jokeStore, jokeContent, categories)
+					_, newJokeStore := addJoke(*jokeStore, jokeContent, categories)
 					// 3. Write the list back out to the joke file
 					err = writeJokes(newJokeStore, jokesFile)
 					if err != nil {
@@ -193,17 +160,6 @@ func main() {
 						Usage:       "add a show",
 						Description: "add a show",
 						Action: func(c *cli.Context) error {
-							fmt.Printf("Location: ")
-							reader := bufio.NewReader(os.Stdin)
-							input, _ := reader.ReadString('\n')
-							location := strings.TrimSpace(string([]byte(input)))
-
-							fmt.Printf("Date (MM/DD/YYYY): ")
-							reader = bufio.NewReader(os.Stdin)
-							input, _ = reader.ReadString('\n')
-							date := strings.TrimSpace(string([]byte(input)))
-							parsedDate, err := time.Parse("01/02/2006", date)
-
 							jokeStore, err := readJokeStore(jokesFile)
 							if err != nil {
 								return cli.Exit(fmt.Sprintf("error reading jokes file %s: %v", jokesFile, err), 1)
@@ -225,10 +181,23 @@ func main() {
 								if result == "N" {
 									addAnotherJoke = false
 								} else {
-									joke, err := getJokeFromCommandLine(jokeStore.Jokes)
+									joke, otherOption, err := getJokeFromCommandLine(jokeStore.Jokes)
 									if err != nil {
-										fmt.Printf("err: %v", err)
-										return nil
+										return cli.Exit(err, 1)
+									}
+									if otherOption == "Add Joke" {
+										jokeContent, err := getJokeContentFromCommandLine()
+										if err != nil {
+											return cli.Exit(err, 1)
+										}
+										fmt.Printf("got ")
+										jokeCategories, err := makeTermRawAndGetCategories(jokeStore.Categories)
+										if err != nil {
+											return cli.Exit(err, 1)
+										}
+										newJoke, newJokeStore := addJoke(*jokeStore, *jokeContent, jokeCategories)
+										err = writeJokes(newJokeStore, jokesFile)
+										joke = newJoke
 									}
 									upperBound, lowerBound, err := getJokeGradeFromCommandLine()
 									jokeResult := JokeResult{
@@ -239,6 +208,17 @@ func main() {
 									jokeResults = append(jokeResults, jokeResult)
 								}
 							}
+
+							fmt.Printf("Location: ")
+							reader := bufio.NewReader(os.Stdin)
+							input, _ := reader.ReadString('\n')
+							location := strings.TrimSpace(string([]byte(input)))
+
+							fmt.Printf("Date (MM/DD/YYYY): ")
+							reader = bufio.NewReader(os.Stdin)
+							input, _ = reader.ReadString('\n')
+							date := strings.TrimSpace(string([]byte(input)))
+							parsedDate, err := time.Parse("01/02/2006", date)
 
 							fmt.Printf("Notes: ")
 							reader = bufio.NewReader(os.Stdin)
@@ -262,6 +242,61 @@ func main() {
 	}
 
 	_ = app.Run(os.Args)
+}
+
+func makeTermRawAndGetCategories(existingCategories []string) ([]string, error) {
+	oldState, err := term.MakeRaw(int(os.Stdin.Fd()))
+	if err != nil {
+		return nil, err
+	}
+	defer term.Restore(int(os.Stdin.Fd()), oldState)
+
+	categories, err := getCategoriesFromCommandLine(existingCategories)
+	if err != nil {
+		return nil, err
+	}
+
+	ansi.NewLine()
+	ansi.CarriageReturn()
+	fmt.Printf("Press enter to confirm, 'a' to abort.")
+
+	b := make([]byte, 1)
+	for true {
+		// Read in the typed character
+		_, err = os.Stdin.Read(b)
+		if err != nil {
+			return nil, err
+		}
+		if string(b[0]) == "a" {
+			ansi.NewLine()
+			ansi.CarriageReturn()
+			return nil, err
+		}
+		// If it's a return, accept it as a category
+		if string(b[0]) == "\r" {
+			break
+		}
+	}
+	term.Restore(int(os.Stdin.Fd()), oldState)
+	return categories, nil
+}
+
+func getJokeContentFromCommandLine() (*string, error) {
+	validate := func(input string) error {
+		if len(input) < 1 {
+			return fmt.Errorf("invalid string")
+		}
+		return nil
+	}
+	prompt := promptui.Prompt{
+		Label:    "Joke Content",
+		Validate: validate,
+	}
+	jokeContent, err := prompt.Run()
+	if err != nil {
+		return nil, err
+	}
+	return &jokeContent, nil
 }
 
 func getJokeGradeFromCommandLine() (*string, *string, error) {
@@ -297,8 +332,8 @@ func getJokeGradeFromCommandLine() (*string, *string, error) {
 
 }
 
-// Requires that the terminal is in raw state
-func getJokeFromCommandLine(existingJokes []Joke) (*Joke, error) {
+// Requires that the terminal is in raw state.
+func getJokeFromCommandLine(existingJokes []Joke) (*Joke, string, error) {
 	validate := func(input string) error {
 		if len(input) < 1 {
 			return fmt.Errorf("invalid string")
@@ -311,8 +346,7 @@ func getJokeFromCommandLine(existingJokes []Joke) (*Joke, error) {
 	}
 	result, err := prompt.Run()
 	if err != nil {
-		fmt.Printf("Prompt failed %v\n", err)
-		return nil, nil
+		return nil, "", err
 	}
 	options := []Joke{}
 	contentOptions := []string{}
@@ -324,18 +358,20 @@ func getJokeFromCommandLine(existingJokes []Joke) (*Joke, error) {
 	for _, o := range options {
 		contentOptions = append(contentOptions, o.Content)
 	}
+	addJokeText := "Add Joke"
 	// TODO: add option to add joke if it's not there.
 	selectPrompt := promptui.Select{
 		Label: "Select Joke",
-		Items: contentOptions,
+		Items: append(contentOptions, addJokeText),
 	}
 	i, result, err := selectPrompt.Run()
 	if err != nil {
-		fmt.Printf("Prompt failed %v\n", err)
-		return nil, nil
+		return nil, "", err
 	}
-	fmt.Printf("You choose %q\n", result)
-	return &options[i], nil
+	if result == "Add Joke" {
+		return nil, addJokeText, nil
+	}
+	return &options[i], "", nil
 }
 
 // Requires that the terminal is in raw state
@@ -456,7 +492,7 @@ func readJokeStore(fileLocation string) (*JokeStore, error) {
 	return &payload, nil
 }
 
-func addJoke(existingStore JokeStore, newJokeContent string, newJokeCategories []string) JokeStore {
+func addJoke(existingStore JokeStore, newJokeContent string, newJokeCategories []string) (*Joke, JokeStore) {
 	// TODO: add check to see if joke has already been added
 	newJoke := Joke{
 		// Create a unique ID for the joke that incorporates the tags
@@ -478,7 +514,7 @@ func addJoke(existingStore JokeStore, newJokeContent string, newJokeCategories [
 		Categories: categories,
 		Shows:      existingStore.Shows,
 	}
-	return newJokeStore
+	return &newJoke, newJokeStore
 }
 
 func addShow(existingStore JokeStore, jokeResults []JokeResult, time time.Time, notes string, location string) JokeStore {
