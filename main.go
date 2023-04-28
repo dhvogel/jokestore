@@ -43,7 +43,7 @@ type Joke struct {
 }
 
 type JokeResult struct {
-	JokeID          string
+	JokeID          uint32
 	UpperBoundGrade string
 	LowerBoundGrade string
 }
@@ -198,12 +198,18 @@ func main() {
 							input, _ := reader.ReadString('\n')
 							location := strings.TrimSpace(string([]byte(input)))
 
+							fmt.Printf("Date (MM/DD/YYYY): ")
+							reader = bufio.NewReader(os.Stdin)
+							input, _ = reader.ReadString('\n')
+							date := strings.TrimSpace(string([]byte(input)))
+							parsedDate, err := time.Parse("01/02/2006", date)
+
 							jokeStore, err := readJokeStore(jokesFile)
 							if err != nil {
 								return cli.Exit(fmt.Sprintf("error reading jokes file %s: %v", jokesFile, err), 1)
 							}
 
-							jokes := []Joke{}
+							jokeResults := []JokeResult{}
 							addAnotherJoke := true
 
 							for addAnotherJoke {
@@ -225,7 +231,12 @@ func main() {
 										return nil
 									}
 									upperBound, lowerBound, err := getJokeGradeFromCommandLine()
-									jokes = append(jokes, *joke)
+									jokeResult := JokeResult{
+										JokeID:          joke.ID,
+										UpperBoundGrade: *upperBound,
+										LowerBoundGrade: *lowerBound,
+									}
+									jokeResults = append(jokeResults, jokeResult)
 								}
 							}
 
@@ -234,30 +245,14 @@ func main() {
 							input, _ = reader.ReadString('\n')
 							notes := strings.TrimSpace(string([]byte(input)))
 
-							fmt.Printf("Time (MM/DD/YYYY): ")
-							reader = bufio.NewReader(os.Stdin)
-							input, _ = reader.ReadString('\n')
-							date := strings.TrimSpace(string([]byte(input)))
-							parsedDate, err := time.Parse("01/02/2006", date)
+							// 2. Add a new show
+							newJokeStore := addShow(*jokeStore, jokeResults, parsedDate, notes, location)
 
-							fmt.Printf("got location %s, jokes, %v, notes, %s, date %v", location, jokes, notes, parsedDate)
-
-							// time := c.Timestamp("time")
-
-							// // 1. Read the jokestore
-							// jokeStore, err := readJokeStore(jokesFile)
-							// if err != nil {
-							// 	return cli.Exit(fmt.Sprintf("error reading jokes file %s: %v", jokesFile, err), 1)
-							// }
-
-							// // 2. Add a new show
-							// newJokeStore := addShow(*jokeStore, jokes, *time, notes, location)
-
-							// // 3. Write the list back out to the joke file
-							// err = writeJokes(newJokeStore, jokesFile)
-							// if err != nil {
-							// 	return cli.Exit(fmt.Sprintf("error: could not write joke: %v", err), 1)
-							// }
+							// 3. Write the list back out to the joke file
+							err = writeJokes(newJokeStore, jokesFile)
+							if err != nil {
+								return cli.Exit(fmt.Sprintf("error: could not write joke: %v", err), 1)
+							}
 							return nil
 						},
 					},
@@ -329,6 +324,7 @@ func getJokeFromCommandLine(existingJokes []Joke) (*Joke, error) {
 	for _, o := range options {
 		contentOptions = append(contentOptions, o.Content)
 	}
+	// TODO: add option to add joke if it's not there.
 	selectPrompt := promptui.Select{
 		Label: "Select Joke",
 		Items: contentOptions,
@@ -485,16 +481,16 @@ func addJoke(existingStore JokeStore, newJokeContent string, newJokeCategories [
 	return newJokeStore
 }
 
-func addShow(existingStore JokeStore, jokes []string, time time.Time, notes string, location string) JokeStore {
+func addShow(existingStore JokeStore, jokeResults []JokeResult, time time.Time, notes string, location string) JokeStore {
 	// TODO: add check to see if joke has already been added
 	newShow := Show{
 		// Create a unique ID for the joke that incorporates the tags
 		// by hashing the string "<location>:<time>"
-		ID:       createHash(fmt.Sprintf("%s:%s", location, time)),
-		Jokes:    jokes,
-		Time:     time,
-		Notes:    notes,
-		Location: location,
+		ID:          createHash(fmt.Sprintf("%s:%s", location, time)),
+		JokeResults: jokeResults,
+		Time:        time,
+		Notes:       notes,
+		Location:    location,
 	}
 	newJokeStore := JokeStore{
 		Jokes:      existingStore.Jokes,
