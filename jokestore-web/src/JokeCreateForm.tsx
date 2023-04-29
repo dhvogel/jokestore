@@ -1,9 +1,9 @@
 import React, {useState} from 'react';
 import { TextField, Button, Stack } from '@mui/material';
-import CategorySelect from './CategorySelect';
+import JokeCategorySelect from './JokeCategorySelect';
  
  
-const JokeForm = () => {
+const JokeCreateForm = () => {
     const [firstName, setFirstName] = useState('')
     const [lastName, setLastName] = useState('')
     const [email, setEmail] = useState('')
@@ -27,7 +27,7 @@ const JokeForm = () => {
                         multiline
                         required
                     />
-                <CategorySelect />
+                <JokeCategorySelect />
                 <Button variant="outlined" color="secondary" type="submit">Add Joke</Button>
             </form>
      
@@ -35,4 +35,4 @@ const JokeForm = () => {
     )
 }
  
-export default JokeForm;
+export default JokeCreateForm;

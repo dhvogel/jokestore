@@ -9,7 +9,7 @@ import TableRow from '@mui/material/TableRow';
 import Paper from '@mui/material/Paper';
 import { Box, IconButton, TextField, Toolbar } from '@mui/material';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
-import JokeForm from './JokeForm';
+import JokeCreateForm from './JokeCreateForm';
 
 const StyledTableCell = styled(TableCell)(({ theme }) => ({
   [`&.${tableCellClasses.head}`]: {
@@ -61,7 +61,7 @@ export default function JokeTable() {
           <AddCircleOutlineIcon />
         </IconButton>
       </Box>
-      {showForm && <JokeForm/>}
+      {showForm && <JokeCreateForm/>}
     <TableContainer component={Paper}>
       <Table sx={{ minWidth: 700 }} aria-label="customized table">
         <TableHead>
