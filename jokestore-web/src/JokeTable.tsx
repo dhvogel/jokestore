@@ -7,7 +7,7 @@ import TableContainer from '@mui/material/TableContainer';
 import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import Paper from '@mui/material/Paper';
-import { IconButton, Toolbar } from '@mui/material';
+import { Box, IconButton, TextField, Toolbar } from '@mui/material';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 
 const StyledTableCell = styled(TableCell)(({ theme }) => ({
@@ -41,11 +41,26 @@ const rows = [
 ];
 
 export default function JokeTable() {
+  const [showForm, setShowForm] = React.useState(false);
   return (
     <div>
-    <Toolbar>
-      JOKES
-    </Toolbar>
+       <Box
+        sx={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          bgcolor: 'background.paper',
+        }}
+      >
+        <Toolbar>
+          JOKES
+        </Toolbar>
+        <IconButton color="primary" aria-label="add a joke" onClick={() => {
+    setShowForm(!showForm)
+        }}>
+          <AddCircleOutlineIcon />
+        </IconButton>
+      </Box>
+      {showForm && <TextField/>}
     <TableContainer component={Paper}>
       <Table sx={{ minWidth: 700 }} aria-label="customized table">
         <TableHead>
@@ -69,11 +84,11 @@ export default function JokeTable() {
                {row.timesUsed}
               </StyledTableCell>
               <StyledTableCell align="right">
-                <IconButton aria-label="delete" disabled color="primary">
+                <IconButton aria-label="delete" color="secondary">
                     <AddCircleOutlineIcon />
                 </IconButton>
               </StyledTableCell>
-              <StyledTableCell align="right"><IconButton aria-label="delete" disabled color="primary">
+              <StyledTableCell align="right">  <IconButton color="secondary">
                     <AddCircleOutlineIcon />
                 </IconButton>
               </StyledTableCell>
