@@ -20,7 +20,7 @@ export default function JokeCategorySelect() {
       getOptionLabel={(option) => option.title}
       style={{ width: 500 }}
       renderInput={(params) => (
-        <TextField {...params} label="Fixed tag" placeholder="Favorites" />
+        <TextField {...params} label="Categories" placeholder="Categories" />
       )}
     />
   );

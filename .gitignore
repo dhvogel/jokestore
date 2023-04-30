@@ -1,1 +1,5 @@
 .jokes
+firebase*
+database.rules.json
+.firebaserc
+ui-debug.log
