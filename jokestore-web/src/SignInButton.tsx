@@ -1,4 +1,5 @@
 import { Auth, GoogleAuthProvider, signInWithPopup } from "firebase/auth";
+import GoogleButton from "react-google-button";
 
 interface Props {
     auth: Auth;
@@ -13,9 +14,19 @@ export const SignInButton = ({ auth }: Props) => {
     return (
         <>
             <p>
-                You need to sign in with Google to use this app.
+                Jokestore - Sign in
             </p>
-            <button onClick={signInWithGoogle} className="sign-in"></button>
+            <div style={{
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+            }}>
+                <GoogleButton 
+                    onClick={signInWithGoogle} 
+                    className="sign-in"
+                />
+            </div>
+
         </>
     )
 };
