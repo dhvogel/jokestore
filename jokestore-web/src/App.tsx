@@ -5,14 +5,16 @@ import ResponsiveAppBar from './ResponsiveAppBar';
 import JokeTable from './JokeTable';
 import ShowTable from './ShowTable';
 import { Auth } from "firebase/auth";
+import { Database } from "firebase/database";
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { SignInButton } from './SignInButton';
 
 interface Props {
   auth: Auth;
+  db: Database;
 }
 
-function App({ auth }: Props) {
+function App({ auth, db }: Props) {
   const [user] = useAuthState(auth);
   return (
     <div className="App">

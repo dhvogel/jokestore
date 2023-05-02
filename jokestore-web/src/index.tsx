@@ -5,11 +5,16 @@ import App from './App';
 import reportWebVitals from './reportWebVitals';
 import { initializeApp } from "firebase/app";
 import { getAnalytics } from "firebase/analytics";
-import { getAuth, 
+import { 
+  getAuth, 
   connectAuthEmulator, 
   signInWithEmailAndPassword,
   signInWithPopup,
   GoogleAuthProvider } from "firebase/auth";
+import {
+  getDatabase,
+  connectDatabaseEmulator
+} from "firebase/database";
 import firebaseConfig from './firebaseConfig.json';
 // TODO: Add SDKs for Firebase products that you want to use
 // https://firebase.google.com/docs/web/setup#available-libraries
@@ -18,15 +23,17 @@ import firebaseConfig from './firebaseConfig.json';
 const app = initializeApp(firebaseConfig);
 const analytics = getAnalytics(app);
 const auth = getAuth(app);
+const db = getDatabase(app);
 if (process.env.NODE_ENV !== "production") {
   connectAuthEmulator(auth, "http://localhost:9099")
+  connectDatabaseEmulator(db, "localhost", 9000)
 }
 const root = ReactDOM.createRoot(
   document.getElementById('root') as HTMLElement
 );
 root.render(
   <React.StrictMode>
-    <App auth={auth}/>
+    <App auth={auth} db={db}/>
   </React.StrictMode>
 );
 
