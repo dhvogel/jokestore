@@ -10,6 +10,9 @@ import Paper from '@mui/material/Paper';
 import { Box, IconButton, TextField, Toolbar } from '@mui/material';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import JokeCreateForm from './JokeCreateForm';
+import { Database, getDatabase, ref, onValue, set } from "firebase/database";
+import { Firestore, addDoc, collection, getDocs, query, where } from 'firebase/firestore';
+import { User } from 'firebase/auth';
 
 const StyledTableCell = styled(TableCell)(({ theme }) => ({
   [`&.${tableCellClasses.head}`]: {
@@ -41,8 +44,28 @@ const rows = [
   createData('I studied hard. Seriously, I had this persistent boner.', ["C", "D"], 2)
 ];
 
-export default function JokeTable() {
+interface Props {
+  db: Firestore;
+  user: User;
+}
+
+export default function JokeTable({ db, user }: Props) {
   const [showForm, setShowForm] = React.useState(false);
+  const [foo, setFoo] = React.useState("abc");
+
+  const ReadJoke = async () => {
+    try {
+      const q = query(collection(db, "jokes"), where("uid", "==", user.uid));
+      const docs = await getDocs(q);
+      docs.forEach((doc) => {
+        console.log(doc)
+
+      })
+  }
+  catch (err) {
+    console.error(err);
+  }};
+  ReadJoke()
   return (
     <div>
        <Box
@@ -53,7 +76,7 @@ export default function JokeTable() {
         }}
       >
         <Toolbar>
-          JOKES
+          Foo: {foo}
         </Toolbar>
         <IconButton color="primary" aria-label="add a joke" onClick={() => {
     setShowForm(!showForm)
@@ -61,7 +84,7 @@ export default function JokeTable() {
           <AddCircleOutlineIcon />
         </IconButton>
       </Box>
-      {showForm && <JokeCreateForm/>}
+      {showForm && <JokeCreateForm user={user} db={db}/>}
     <TableContainer component={Paper}>
       <Table sx={{ minWidth: 700 }} aria-label="customized table">
         <TableHead>

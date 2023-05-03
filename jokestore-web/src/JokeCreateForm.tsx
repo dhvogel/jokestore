@@ -1,14 +1,30 @@
 import React, {useState} from 'react';
 import { TextField, Button, Stack } from '@mui/material';
 import JokeCategorySelect from './JokeCategorySelect';
+import { Firestore, addDoc, collection } from 'firebase/firestore';
+import { User } from 'firebase/auth';
  
+interface Props {
+    db: Firestore;
+    user: User;
+  }
  
-const JokeCreateForm = () => {
+const JokeCreateForm = ({ db, user }: Props) => {
     const [firstName, setFirstName] = useState('')
     const [lastName, setLastName] = useState('')
     const [email, setEmail] = useState('')
     const [dateOfBirth, setDateOfBirth] = useState('')
     const [password, setPassword] = useState('')
+
+    const addJoke = async () => {
+        await addDoc(collection(db, "jokes"), {
+            uid: user.uid,
+            jokeid: "foo",
+            content: "My work place just put in these new gender neutral bathrooms. I can't believe it. What a great place to meet women.",
+            timeAdded: Date().toLocaleUpperCase(),
+            categories: ["bar", "baz", "quux"]
+        });
+    }
  
     return (
         <React.Fragment>
@@ -28,7 +44,7 @@ const JokeCreateForm = () => {
                         required
                     />
                 <JokeCategorySelect />
-                <Button variant="outlined" color="secondary" type="submit">Add Joke</Button>
+                <Button variant="outlined" color="secondary" type="submit" onClick={addJoke}>Add Joke</Button>
             </form>
      
         </React.Fragment>

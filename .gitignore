@@ -4,3 +4,4 @@ database.rules.json
 .firebaserc
 ui-debug.log
 database-debug.log
+firestore-debug.log
