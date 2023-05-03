@@ -31,41 +31,57 @@ const StyledTableRow = styled(TableRow)(({ theme }) => ({
   },
 }));
 
-function createData(
-  joke: string,
-  categories: string[],
-  timesUsed: number,
-) {
-  return { joke, categories, timesUsed};
+function createData(joke: string, categories:string[], timesUsed: number, timeAdded: Date) : Joke {
+  return {joke, categories, timesUsed, timeAdded};
 }
-
-const rows = [
-  createData('My workplace just got these gender neutral bathrooms...', ["A", "B"], 1000),
-  createData('I studied hard. Seriously, I had this persistent boner.', ["C", "D"], 2)
-];
 
 interface Props {
   db: Firestore;
   user: User;
 }
 
+interface Joke {
+  joke: string;
+  categories: string[];
+  timesUsed: number;
+  timeAdded: Date;
+}
+
+const jokeConverter = {
+  toFirestore: (joke : any) => {
+      return {
+          joke: joke.joke,
+          categories: joke.categories,
+          timesUsed: 0,
+          timeAdded: joke.timeAdded
+      };
+  },
+  fromFirestore: (snapshot : any, options : any) : Joke => {
+    const data = snapshot.data(options);
+    const d = new Date(0); // The 0 there is the key, which sets the date to the epoch
+    d.setUTCSeconds(data.timeAdded);
+    return {joke: data.joke, categories: data.categories, timesUsed: 0, timeAdded: d};
+  }
+};
+
 export default function JokeTable({ db, user }: Props) {
   const [showForm, setShowForm] = React.useState(false);
-  const [foo, setFoo] = React.useState("abc");
+  const [jokes, setJokes] = React.useState<Joke[]>([]);
 
-  const ReadJoke = async () => {
-    try {
-      const q = query(collection(db, "jokes"), where("uid", "==", user.uid));
-      const docs = await getDocs(q);
-      docs.forEach((doc) => {
-        console.log(doc)
+  React.useEffect(() =>  {
+    const ReadJoke = async () => {
+      const q = query(collection(db, "jokes"), where("uid", "==", user.uid)).withConverter(jokeConverter);
+      const querySnapshot = await getDocs(q);
+      const jokes = querySnapshot.docs.map(docSnapshot => docSnapshot.data())
+      setJokes(jokes);
+    } 
 
-      })
-  }
-  catch (err) {
-    console.error(err);
-  }};
-  ReadJoke()
+    ReadJoke().catch(console.error)
+  }, [db, jokes])
+
+
+
+  
   return (
     <div>
        <Box
@@ -76,7 +92,7 @@ export default function JokeTable({ db, user }: Props) {
         }}
       >
         <Toolbar>
-          Foo: {foo}
+          JOKES
         </Toolbar>
         <IconButton color="primary" aria-label="add a joke" onClick={() => {
     setShowForm(!showForm)
@@ -94,18 +110,18 @@ export default function JokeTable({ db, user }: Props) {
             <StyledTableCell align="right">Times Used</StyledTableCell>
             <StyledTableCell align="right">Create New Version</StyledTableCell>
             <StyledTableCell align="right">Add Tag</StyledTableCell>
-            <StyledTableCell align="right">Last Updated</StyledTableCell>
+            <StyledTableCell align="right">Date Added</StyledTableCell>
           </TableRow>
         </TableHead>
         <TableBody>
-          {rows.map((row) => (
-            <StyledTableRow key={row.joke}>
+          {jokes.map((joke) => (
+            <StyledTableRow key={joke.joke}>
               <StyledTableCell component="th" scope="row">
-                {row.joke}
+                {joke.joke}
               </StyledTableCell>
-              <StyledTableCell align="right">{row.categories}</StyledTableCell>
+              <StyledTableCell align="right">{joke.categories}</StyledTableCell>
               <StyledTableCell align="right">
-               {row.timesUsed}
+               {joke.timesUsed}
               </StyledTableCell>
               <StyledTableCell align="right">
                 <IconButton aria-label="delete" color="secondary">
@@ -117,7 +133,7 @@ export default function JokeTable({ db, user }: Props) {
                 </IconButton>
               </StyledTableCell>
               <StyledTableCell align="right">
-              {"4/28/23"}
+              {joke.timeAdded.toDateString()}
               </StyledTableCell>
             </StyledTableRow>
           ))}

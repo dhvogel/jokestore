@@ -17,11 +17,12 @@ const JokeCreateForm = ({ db, user }: Props) => {
     const [password, setPassword] = useState('')
 
     const addJoke = async () => {
+        const epochSeconds = new Date().getTime() / 1000
         await addDoc(collection(db, "jokes"), {
             uid: user.uid,
             jokeid: "foo",
             content: "My work place just put in these new gender neutral bathrooms. I can't believe it. What a great place to meet women.",
-            timeAdded: Date().toLocaleUpperCase(),
+            timeAdded: epochSeconds,
             categories: ["bar", "baz", "quux"]
         });
     }
