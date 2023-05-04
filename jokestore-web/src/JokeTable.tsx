@@ -31,8 +31,8 @@ const StyledTableRow = styled(TableRow)(({ theme }) => ({
   },
 }));
 
-function createData(joke: string, categories:string[], timesUsed: number, timeAdded: Date) : Joke {
-  return {joke, categories, timesUsed, timeAdded};
+function createData(content: string, categories:string[], timesUsed: number, timeAdded: Date) : Joke {
+  return {content, categories, timesUsed, timeAdded};
 }
 
 interface Props {
@@ -40,17 +40,17 @@ interface Props {
   user: User;
 }
 
-interface Joke {
-  joke: string;
+export interface Joke {
+  content: string;
   categories: string[];
   timesUsed: number;
   timeAdded: Date;
 }
 
-const jokeConverter = {
+export const jokeConverter = {
   toFirestore: (joke : any) => {
       return {
-          joke: joke.joke,
+          content: joke.content,
           categories: joke.categories,
           timesUsed: 0,
           timeAdded: joke.timeAdded
@@ -60,7 +60,7 @@ const jokeConverter = {
     const data = snapshot.data(options);
     const d = new Date(0); // The 0 there is the key, which sets the date to the epoch
     d.setUTCSeconds(data.timeAdded);
-    return {joke: data.joke, categories: data.categories, timesUsed: 0, timeAdded: d};
+    return {content: data.content, categories: data.categories, timesUsed: 0, timeAdded: d};
   }
 };
 
@@ -75,13 +75,9 @@ export default function JokeTable({ db, user }: Props) {
       const jokes = querySnapshot.docs.map(docSnapshot => docSnapshot.data())
       setJokes(jokes);
     } 
-
     ReadJoke().catch(console.error)
-  }, [db, jokes])
+  }, [db])
 
-
-
-  
   return (
     <div>
        <Box
@@ -115,9 +111,9 @@ export default function JokeTable({ db, user }: Props) {
         </TableHead>
         <TableBody>
           {jokes.map((joke) => (
-            <StyledTableRow key={joke.joke}>
+            <StyledTableRow key={joke.content}>
               <StyledTableCell component="th" scope="row">
-                {joke.joke}
+                {joke.content}
               </StyledTableCell>
               <StyledTableCell align="right">{joke.categories}</StyledTableCell>
               <StyledTableCell align="right">
