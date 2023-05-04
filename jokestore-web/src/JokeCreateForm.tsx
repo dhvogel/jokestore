@@ -16,8 +16,10 @@ const JokeCreateForm = ({ db, user }: Props) => {
     const [showErrorMessage, setShowErrorMessage] = React.useState(false);
     const [content, setContent] = React.useState('')
     const [categories, setCategories] = React.useState<any>([]);
+    const [savedCategories, setSavedCategories] = React.useState<string[][]>([[]]);
 
-    const addJoke = async () => {
+    const addJoke = async (e: React.MouseEvent) => {
+        e.preventDefault();
         if (content === '') {
             setShowErrorMessage(true)
             return
@@ -29,7 +31,7 @@ const JokeCreateForm = ({ db, user }: Props) => {
             jokeid: epochSeconds, // jokeID is epoch seconds for now
             content: content,
             timeAdded: epochSeconds,
-            categories: ["bar", "baz", "quux"]
+            categories: categories.reduce((accumulator:any, value:any) => accumulator.concat(value), [])
         });
     }
  
@@ -50,7 +52,13 @@ const JokeCreateForm = ({ db, user }: Props) => {
                     multiline
                     required
                 />
-                <JokeCategorySelect user={user} db={db} categories={categories} setCategories={setCategories} />
+                <JokeCategorySelect 
+                    user={user} 
+                    db={db} 
+                    categories={categories} 
+                    setCategories={setCategories}
+                    savedCategories={savedCategories}
+                    setSavedCategories={setSavedCategories} />
                 <Button variant="outlined" color="secondary" type="submit" onClick={addJoke}>Add Joke</Button>
                 {showErrorMessage && <p style={{color: "red"}}>Please fill in a joke</p>}
             </form>

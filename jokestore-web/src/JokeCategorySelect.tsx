@@ -1,7 +1,7 @@
 import * as React from 'react';
 import Chip from '@mui/material/Chip';
 import TextField from '@mui/material/TextField';
-import Autocomplete from '@mui/material/Autocomplete';
+import Autocomplete, { createFilterOptions } from '@mui/material/Autocomplete';
 import { Firestore, collection, getDocs, query, where } from 'firebase/firestore';
 import { User } from 'firebase/auth';
 
@@ -10,6 +10,8 @@ interface Props {
   user: User;
   categories: any;
   setCategories: React.Dispatch<any>;
+  savedCategories: any;
+  setSavedCategories: React.Dispatch<any>;
 }
 
 export const categoryConverter = {
@@ -27,8 +29,9 @@ export const categoryConverter = {
   }
 };
 
-export default function FixedTags({ db, user, categories, setCategories }: Props) {
-  const [savedCategories, setSavedCategories] = React.useState<string[][]>([[]]);
+const filter = createFilterOptions<string[]>();
+
+export default function FixedTags({ db, user, categories, setCategories, savedCategories, setSavedCategories }: Props) {
   React.useEffect(() =>  {
     const ReadJoke = async () => {
       const q = query(collection(db, "categories"), where("uid", "==", user.uid)).withConverter(categoryConverter);
@@ -50,6 +53,20 @@ export default function FixedTags({ db, user, categories, setCategories }: Props
         ]);
       }}
       options={savedCategories[0]}
+      filterOptions={(options, params) => {
+        const filtered = filter(options, params);
+
+        const { inputValue } = params;
+        // Suggest the creation of a new value
+        const isExisting = options.some((option) => inputValue === option.title);
+        if (inputValue !== '' && !isExisting && filtered.length === 0) {
+          filtered.push(
+            [`${inputValue}`]
+          );
+        }
+
+        return filtered;
+      }}
       getOptionLabel={(option) => option}
       style={{ width: 500 }}
       renderInput={(params) => (
