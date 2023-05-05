@@ -26,11 +26,11 @@ const rows = [
   createData('Gingerbread', 356, 16.0, 49, 3.9),
 ];
 
-export default function ShowTable() {
+export default function BitTable() {
   return (
     <div>
     <Toolbar>
-     SHOWS
+     BITS
     </Toolbar>
     <TableContainer component={Paper}>
       <Table sx={{ minWidth: 650 }} aria-label="simple table">

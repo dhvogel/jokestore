@@ -3,7 +3,7 @@ import logo from './logo.svg';
 import './App.css';
 import ResponsiveAppBar from './ResponsiveAppBar';
 import JokeTable from './JokeTable';
-import ShowTable from './ShowTable';
+import BitTable from './BitTable';
 import { Auth } from "firebase/auth";
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { SignInButton } from './SignInButton';
@@ -25,7 +25,7 @@ function App({ auth, db }: Props) {
         <br />
         <JokeTable db={db} user={user}/>
         <br />
-        <ShowTable />
+        {/*<BitTable />*/}
       </div> : 
       <div>
         <SignInButton auth={auth} db={db} />

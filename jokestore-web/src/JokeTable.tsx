@@ -9,9 +9,10 @@ import TableRow from '@mui/material/TableRow';
 import Paper from '@mui/material/Paper';
 import { Box, Chip, IconButton, TextField, Toolbar } from '@mui/material';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
+import DeleteIcon from '@mui/icons-material/Delete';
 import JokeCreateForm from './JokeCreateForm';
 import { Database, getDatabase, ref, onValue, set } from "firebase/database";
-import { Firestore, addDoc, collection, getDocs, query, where } from 'firebase/firestore';
+import { Firestore, addDoc, collection, deleteDoc, getDocs, query, where } from 'firebase/firestore';
 import { User } from 'firebase/auth';
 
 const StyledTableCell = styled(TableCell)(({ theme }) => ({
@@ -69,7 +70,7 @@ export const jokeConverter = {
 export default function JokeTable({ db, user }: Props) {
   const [showForm, setShowForm] = React.useState(false);
   const [jokes, setJokes] = React.useState<Joke[]>([]);
-  const [jokeAdded, setJokeAdded] = React.useState<boolean>(false);
+  const [shouldUpdateJokeTable, setShouldUpdateJokeTable] = React.useState<boolean>(false);
 
   React.useEffect(() =>  {
     const ReadJoke = async () => {
@@ -79,11 +80,19 @@ export default function JokeTable({ db, user }: Props) {
       setJokes(jokes);
     } 
     ReadJoke().catch(console.error)
-    setJokeAdded(false)
-  }, [db, jokeAdded])
+    setShouldUpdateJokeTable(false)
+  }, [db, shouldUpdateJokeTable])
+
+  const deleteJoke = async (e: React.MouseEvent, jokeid : number) => {
+    const q = query(collection(db, "jokes"), where("jokeid", "==", jokeid))
+    const querySnapshot = await getDocs(q)
+    const jokeRef = querySnapshot.docs[0].ref
+    await deleteDoc(jokeRef);
+    setShouldUpdateJokeTable(true)
+  }
 
   return (
-    <div>
+    <div style={{padding: 20}}>
        <Box
         sx={{
           display: 'flex',
@@ -100,7 +109,7 @@ export default function JokeTable({ db, user }: Props) {
           <AddCircleOutlineIcon />
         </IconButton>
       </Box>
-      {showForm && <JokeCreateForm user={user} db={db} setJokeAdded={setJokeAdded}/>}
+      {showForm && <JokeCreateForm user={user} db={db} setShouldUpdateJokeTable={setShouldUpdateJokeTable}/>}
     <TableContainer component={Paper}>
       <Table sx={{ minWidth: 700 }} aria-label="customized table">
         <TableHead>
@@ -111,6 +120,7 @@ export default function JokeTable({ db, user }: Props) {
             <StyledTableCell align="right">Create New Version</StyledTableCell>
             <StyledTableCell align="right">Add Tag</StyledTableCell>
             <StyledTableCell align="right">Date Added</StyledTableCell>
+            <StyledTableCell align="right">Delete</StyledTableCell>
           </TableRow>
         </TableHead>
         <TableBody>
@@ -121,7 +131,7 @@ export default function JokeTable({ db, user }: Props) {
               </StyledTableCell>
               <StyledTableCell align="right">
                 {joke.categories.map((category) => {
-                  return (<div><Chip label={category} /><br/></div>)
+                  return (<div style={{paddingBottom: 5}}><Chip label={category}/><br/></div>)
                 })}
               </StyledTableCell>
               <StyledTableCell align="right">
@@ -138,6 +148,11 @@ export default function JokeTable({ db, user }: Props) {
               </StyledTableCell>
               <StyledTableCell align="right">
               {joke.timeAdded.toDateString()}
+              </StyledTableCell>
+              <StyledTableCell align="right">
+                <IconButton aria-label="delete" color="error" onClick={(e) => {deleteJoke(e, joke.jokeid)}}>
+                    <DeleteIcon />
+                </IconButton>
               </StyledTableCell>
             </StyledTableRow>
           ))}

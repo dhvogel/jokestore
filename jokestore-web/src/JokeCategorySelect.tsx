@@ -67,10 +67,15 @@ export default function FixedTags({ db, user, categories, setCategories, savedCa
 
         return filtered;
       }}
-      getOptionLabel={(option) => option}
+      getOptionLabel={(option:any) => {
+        if (option.constructor.name === "Array") {
+          option = option[0]
+        }
+        const stringOption : string = option
+        return stringOption.toUpperCase()}}
       style={{ width: 500 }}
       renderInput={(params) => (
-        <TextField {...params} label="Categories" placeholder="Favorites" />
+        <TextField {...params} label="Categories" placeholder="Categories" />
       )}
     />
   );

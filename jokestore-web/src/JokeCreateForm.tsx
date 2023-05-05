@@ -9,11 +9,11 @@ import { randomUUID } from 'crypto';
 interface Props {
     db: Firestore;
     user: User;
-    setJokeAdded: React.Dispatch<boolean>;
+    setShouldUpdateJokeTable: React.Dispatch<boolean>;
 }
 
  
-const JokeCreateForm = ({ db, user, setJokeAdded }: Props) => {
+const JokeCreateForm = ({ db, user, setShouldUpdateJokeTable }: Props) => {
     const [showErrorMessage, setShowErrorMessage] = React.useState(false);
     const [content, setContent] = React.useState('')
     const [categories, setCategories] = React.useState<any>([]);
@@ -44,33 +44,38 @@ const JokeCreateForm = ({ db, user, setJokeAdded }: Props) => {
             timeAdded: epochSeconds,
             categories: flatCategories,
         });
-        setJokeAdded(true)
+        setShouldUpdateJokeTable(true)
     }
  
     return (
         <React.Fragment>
             <h2>Add Joke</h2>
-            <form>
-               
+            <form style={{padding:20, paddingTop:0}}>
                 <TextField
                     type="text"
                     variant='outlined'
                     color='secondary'
                     label="Joke"
                     onChange={e => setContent(e.target.value)}
+                    sx={{
+                        paddingBottom: 2
+                    }}
                     value={content}
                     rows={4}
                     fullWidth
                     multiline
                     required
                 />
-                <JokeCategorySelect 
-                    user={user} 
-                    db={db} 
-                    categories={categories} 
-                    setCategories={setCategories}
-                    savedCategories={savedCategories}
-                    setSavedCategories={setSavedCategories} />
+                <div style={{paddingBottom: 5}}>
+                    <JokeCategorySelect 
+                        user={user} 
+                        db={db} 
+                        categories={categories} 
+                        setCategories={setCategories}
+                        savedCategories={savedCategories}
+                        setSavedCategories={setSavedCategories}
+                    />
+                </div>
                 <Button variant="outlined" color="secondary" type="submit" onClick={addJoke}>Add Joke</Button>
                 {showErrorMessage && <p style={{color: "red"}}>Please fill in a joke</p>}
             </form>
