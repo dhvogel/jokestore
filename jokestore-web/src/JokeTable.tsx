@@ -31,8 +31,8 @@ const StyledTableRow = styled(TableRow)(({ theme }) => ({
   },
 }));
 
-function createData(content: string, categories:string[], timesUsed: number, timeAdded: Date) : Joke {
-  return {content, categories, timesUsed, timeAdded};
+function createData(jokeid: number, content: string, categories:string[], timesUsed: number, timeAdded: Date) : Joke {
+  return {jokeid, content, categories, timesUsed, timeAdded};
 }
 
 interface Props {
@@ -41,6 +41,7 @@ interface Props {
 }
 
 export interface Joke {
+  jokeid: number
   content: string;
   categories: string[];
   timesUsed: number;
@@ -50,6 +51,7 @@ export interface Joke {
 export const jokeConverter = {
   toFirestore: (joke : any) => {
       return {
+          jokeid: joke.id,
           content: joke.content,
           categories: joke.categories,
           timesUsed: 0,
@@ -60,13 +62,14 @@ export const jokeConverter = {
     const data = snapshot.data(options);
     const d = new Date(0); // The 0 there is the key, which sets the date to the epoch
     d.setUTCSeconds(data.timeAdded);
-    return {content: data.content, categories: data.categories, timesUsed: 0, timeAdded: d};
+    return {jokeid: data.jokeid, content: data.content, categories: data.categories, timesUsed: 0, timeAdded: d};
   }
 };
 
 export default function JokeTable({ db, user }: Props) {
   const [showForm, setShowForm] = React.useState(false);
   const [jokes, setJokes] = React.useState<Joke[]>([]);
+  const [jokeAdded, setJokeAdded] = React.useState<boolean>(false);
 
   React.useEffect(() =>  {
     const ReadJoke = async () => {
@@ -76,7 +79,8 @@ export default function JokeTable({ db, user }: Props) {
       setJokes(jokes);
     } 
     ReadJoke().catch(console.error)
-  }, [db])
+    setJokeAdded(false)
+  }, [db, jokeAdded])
 
   return (
     <div>
@@ -96,7 +100,7 @@ export default function JokeTable({ db, user }: Props) {
           <AddCircleOutlineIcon />
         </IconButton>
       </Box>
-      {showForm && <JokeCreateForm user={user} db={db}/>}
+      {showForm && <JokeCreateForm user={user} db={db} setJokeAdded={setJokeAdded}/>}
     <TableContainer component={Paper}>
       <Table sx={{ minWidth: 700 }} aria-label="customized table">
         <TableHead>
@@ -111,7 +115,7 @@ export default function JokeTable({ db, user }: Props) {
         </TableHead>
         <TableBody>
           {jokes.map((joke) => (
-            <StyledTableRow key={joke.content}>
+            <StyledTableRow key={joke.jokeid}>
               <StyledTableCell component="th" scope="row">
                 {joke.content}
               </StyledTableCell>

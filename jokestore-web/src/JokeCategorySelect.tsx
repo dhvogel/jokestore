@@ -75,10 +75,3 @@ export default function FixedTags({ db, user, categories, setCategories, savedCa
     />
   );
 }
-
-// Top 100 films as rated by IMDb users. http://www.imdb.com/chart/top
-const top100Films = [
-  'SEX',
-  'DRUGS',
-  'ROCK AND ROLL'
-];

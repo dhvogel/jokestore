@@ -9,10 +9,11 @@ import { randomUUID } from 'crypto';
 interface Props {
     db: Firestore;
     user: User;
+    setJokeAdded: React.Dispatch<boolean>;
 }
 
  
-const JokeCreateForm = ({ db, user }: Props) => {
+const JokeCreateForm = ({ db, user, setJokeAdded }: Props) => {
     const [showErrorMessage, setShowErrorMessage] = React.useState(false);
     const [content, setContent] = React.useState('')
     const [categories, setCategories] = React.useState<any>([]);
@@ -33,6 +34,7 @@ const JokeCreateForm = ({ db, user }: Props) => {
             timeAdded: epochSeconds,
             categories: categories.reduce((accumulator:any, value:any) => accumulator.concat(value), [])
         });
+        setJokeAdded(true)
     }
  
     return (
