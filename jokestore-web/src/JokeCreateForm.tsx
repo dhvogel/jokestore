@@ -1,7 +1,7 @@
 import React, {useState} from 'react';
 import { TextField, Button, Stack } from '@mui/material';
 import JokeCategorySelect from './JokeCategorySelect';
-import { Firestore, addDoc, collection } from 'firebase/firestore';
+import { Firestore, addDoc, arrayUnion, collection, getDocs, query, updateDoc, where } from 'firebase/firestore';
 import { User } from 'firebase/auth';
 import { Joke } from './JokeTable';
 import { randomUUID } from 'crypto';
@@ -26,13 +26,23 @@ const JokeCreateForm = ({ db, user, setJokeAdded }: Props) => {
             return
         }
         setShowErrorMessage(false)
+        const flatCategories : string[] = categories.reduce((accumulator:any, value:any) => accumulator.concat(value), [])
+        const q = query(collection(db, "categories"), where("uid", "==", user.uid))
+        const querySnapshot = await getDocs(q)
+        const categoriesRef = querySnapshot.docs[0].ref
+        const existingCategories = querySnapshot.docs.map(docSnapshot => docSnapshot.data())[0].categories
+
+        await updateDoc(categoriesRef, {
+            categories: arrayUnion(...existingCategories, ...flatCategories)
+        });
+        
         const epochSeconds = Math.floor(new Date().getTime() / 1000)
         await addDoc(collection(db, "jokes"), {
             uid: user.uid,
             jokeid: epochSeconds, // jokeID is epoch seconds for now
             content: content,
             timeAdded: epochSeconds,
-            categories: categories.reduce((accumulator:any, value:any) => accumulator.concat(value), [])
+            categories: flatCategories,
         });
         setJokeAdded(true)
     }

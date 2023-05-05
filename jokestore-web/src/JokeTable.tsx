@@ -95,7 +95,7 @@ export default function JokeTable({ db, user }: Props) {
           JOKES
         </Toolbar>
         <IconButton color="primary" aria-label="add a joke" onClick={() => {
-    setShowForm(!showForm)
+            setShowForm(!showForm)
         }}>
           <AddCircleOutlineIcon />
         </IconButton>
