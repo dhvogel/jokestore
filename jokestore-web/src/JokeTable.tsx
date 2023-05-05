@@ -7,7 +7,7 @@ import TableContainer from '@mui/material/TableContainer';
 import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import Paper from '@mui/material/Paper';
-import { Box, IconButton, TextField, Toolbar } from '@mui/material';
+import { Box, Chip, IconButton, TextField, Toolbar } from '@mui/material';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import JokeCreateForm from './JokeCreateForm';
 import { Database, getDatabase, ref, onValue, set } from "firebase/database";
@@ -119,7 +119,11 @@ export default function JokeTable({ db, user }: Props) {
               <StyledTableCell component="th" scope="row">
                 {joke.content}
               </StyledTableCell>
-              <StyledTableCell align="right">{joke.categories}</StyledTableCell>
+              <StyledTableCell align="right">
+                {joke.categories.map((category) => {
+                  return (<div><Chip label={category} /><br/></div>)
+                })}
+              </StyledTableCell>
               <StyledTableCell align="right">
                {joke.timesUsed}
               </StyledTableCell>
