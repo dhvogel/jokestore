@@ -52,7 +52,7 @@ export default function FixedTags({ db, user, categories, setCategories, savedCa
           ...newValue
         ]);
       }}
-      options={savedCategories[0]}
+      options={savedCategories[0] || []}
       filterOptions={(options, params) => {
         const filtered = filter(options, params);
 
@@ -67,6 +67,7 @@ export default function FixedTags({ db, user, categories, setCategories, savedCa
 
         return filtered;
       }}
+      
       getOptionLabel={(option:any) => {
         if (option.constructor.name === "Array") {
           option = option[0]

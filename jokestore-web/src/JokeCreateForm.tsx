@@ -29,13 +29,20 @@ const JokeCreateForm = ({ db, user, setShouldUpdateJokeTable }: Props) => {
         const flatCategories : string[] = categories.reduce((accumulator:any, value:any) => accumulator.concat(value), [])
         const q = query(collection(db, "categories"), where("uid", "==", user.uid))
         const querySnapshot = await getDocs(q)
-        const categoriesRef = querySnapshot.docs[0].ref
-        const existingCategories = querySnapshot.docs.map(docSnapshot => docSnapshot.data())[0].categories
-
-        await updateDoc(categoriesRef, {
-            categories: arrayUnion(...existingCategories, ...flatCategories)
-        });
-        
+        // If no document reference is returned, then create the per-user category document.
+        // Else, modify the existing category document.
+        if (querySnapshot.docs.length === 0) {
+            await addDoc(collection(db, "categories"), {
+                uid: user.uid,
+                categories: flatCategories,
+            })
+        } else {
+            const categoriesRef = querySnapshot.docs[0].ref
+            const existingCategories = querySnapshot.docs.map(docSnapshot => docSnapshot.data())[0].categories
+            await updateDoc(categoriesRef, {
+                categories: arrayUnion(...existingCategories, ...flatCategories)
+            });
+        }
         const epochSeconds = Math.floor(new Date().getTime() / 1000)
         await addDoc(collection(db, "jokes"), {
             uid: user.uid,
