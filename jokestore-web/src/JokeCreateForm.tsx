@@ -15,14 +15,15 @@ interface Props {
  
 const JokeCreateForm = ({ db, user, setShouldUpdateJokeTable }: Props) => {
     const [showErrorMessage, setShowErrorMessage] = React.useState(false);
-    const [content, setContent] = React.useState('')
+    const [setup, setSetup] = React.useState<string>("");
+    const [punch, setPunch] = React.useState<string>("");
     const [categories, setCategories] = React.useState<any>([]);
     const [savedCategories, setSavedCategories] = React.useState<string[][]>([[]]);
     const [jokeAdded, setJokeAdded] = React.useState<string>("false");
 
     const addJoke = async (e: React.MouseEvent) => {
         e.preventDefault();
-        if (content === '') {
+        if (setup === "") {
             setShowErrorMessage(true)
             return
         }
@@ -50,12 +51,14 @@ const JokeCreateForm = ({ db, user, setShouldUpdateJokeTable }: Props) => {
         await addDoc(collection(db, "jokes"), {
             uid: user.uid,
             jokeid: epochSeconds, // jokeID is epoch seconds for now
-            content: content,
+            setup: setup,
+            punch: punch,
             timeAdded: epochSeconds,
             categories: flatCategories,
         });
         setCategories([])
-        setContent("")
+        setSetup("")
+        setPunch("")
         setShouldUpdateJokeTable(true)
     }
  
@@ -68,13 +71,29 @@ const JokeCreateForm = ({ db, user, setShouldUpdateJokeTable }: Props) => {
                     type="text"
                     variant='outlined'
                     color='secondary'
-                    label="Joke"
-                    onChange={e => setContent(e.target.value)}
+                    label="Setup"
+                    onChange={e => setSetup(e.target.value)}
                     sx={{
                         paddingBottom: 2
                     }}
-                    value={content}
-                    rows={4}
+                    value={setup}
+                    rows={2}
+                    fullWidth
+                    multiline
+                    required
+                />
+                <TextField
+                    id="jokefield"
+                    type="text"
+                    variant='outlined'
+                    color='secondary'
+                    label="Punch"
+                    onChange={e => setPunch(e.target.value)}
+                    sx={{
+                        paddingBottom: 2
+                    }}
+                    value={punch}
+                    rows={2}
                     fullWidth
                     multiline
                     required
@@ -90,8 +109,9 @@ const JokeCreateForm = ({ db, user, setShouldUpdateJokeTable }: Props) => {
                         jokeAdded={jokeAdded}
                     />
                 </div>
+                <br />
                 <Button variant="outlined" color="secondary" type="submit" onClick={addJoke}>Add Joke</Button>
-                {showErrorMessage && <p style={{color: "red"}}>Please fill in a joke</p>}
+                {showErrorMessage && <p style={{color: "red"}}>Please fill in both the setup and punch.</p>}
             </form>
      
         </React.Fragment>

@@ -32,8 +32,8 @@ const StyledTableRow = styled(TableRow)(({ theme }) => ({
   },
 }));
 
-function createData(jokeid: number, content: string, categories:string[], timesUsed: number, timeAdded: Date) : Joke {
-  return {jokeid, content, categories, timesUsed, timeAdded};
+function createData(jokeid: number, setup: string, punch: string, categories:string[], timesUsed: number, timeAdded: Date) : Joke {
+  return {jokeid, setup, punch, categories, timesUsed, timeAdded};
 }
 
 interface Props {
@@ -42,8 +42,9 @@ interface Props {
 }
 
 export interface Joke {
-  jokeid: number
-  content: string;
+  jokeid: number;
+  setup: string;
+  punch: string;
   categories: string[];
   timesUsed: number;
   timeAdded: Date;
@@ -63,7 +64,7 @@ export const jokeConverter = {
     const data = snapshot.data(options);
     const d = new Date(0); // The 0 there is the key, which sets the date to the epoch
     d.setUTCSeconds(data.timeAdded);
-    return {jokeid: data.jokeid, content: data.content, categories: data.categories, timesUsed: 0, timeAdded: d};
+    return {jokeid: data.jokeid, setup: data.setup, punch: data.punch, categories: data.categories, timesUsed: 0, timeAdded: d};
   }
 };
 
@@ -127,7 +128,7 @@ export default function JokeTable({ db, user }: Props) {
           {jokes.map((joke) => (
             <StyledTableRow key={joke.jokeid}>
               <StyledTableCell component="th" scope="row">
-                {joke.content}
+                {joke.setup} <b>{joke.punch}</b>
               </StyledTableCell>
               <StyledTableCell align="right">
                 {joke.categories.map((category) => {
