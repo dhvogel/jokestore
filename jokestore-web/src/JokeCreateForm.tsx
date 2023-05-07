@@ -18,6 +18,7 @@ const JokeCreateForm = ({ db, user, setShouldUpdateJokeTable }: Props) => {
     const [content, setContent] = React.useState('')
     const [categories, setCategories] = React.useState<any>([]);
     const [savedCategories, setSavedCategories] = React.useState<string[][]>([[]]);
+    const [jokeAdded, setJokeAdded] = React.useState<string>("false");
 
     const addJoke = async (e: React.MouseEvent) => {
         e.preventDefault();
@@ -26,7 +27,9 @@ const JokeCreateForm = ({ db, user, setShouldUpdateJokeTable }: Props) => {
             return
         }
         setShowErrorMessage(false)
-        const flatCategories : string[] = categories.reduce((accumulator:any, value:any) => accumulator.concat(value), [])
+        const flatCategories : string[] = categories
+                .reduce((accumulator:any, value:any) => accumulator.concat(value), [])
+                .map((category:string) => category.toUpperCase())
         const q = query(collection(db, "categories"), where("uid", "==", user.uid))
         const querySnapshot = await getDocs(q)
         // If no document reference is returned, then create the per-user category document.
@@ -51,6 +54,8 @@ const JokeCreateForm = ({ db, user, setShouldUpdateJokeTable }: Props) => {
             timeAdded: epochSeconds,
             categories: flatCategories,
         });
+        setCategories([])
+        setContent("")
         setShouldUpdateJokeTable(true)
     }
  
@@ -59,6 +64,7 @@ const JokeCreateForm = ({ db, user, setShouldUpdateJokeTable }: Props) => {
             <h2>Add Joke</h2>
             <form style={{padding:20, paddingTop:0}}>
                 <TextField
+                    id="jokefield"
                     type="text"
                     variant='outlined'
                     color='secondary'
@@ -81,6 +87,7 @@ const JokeCreateForm = ({ db, user, setShouldUpdateJokeTable }: Props) => {
                         setCategories={setCategories}
                         savedCategories={savedCategories}
                         setSavedCategories={setSavedCategories}
+                        jokeAdded={jokeAdded}
                     />
                 </div>
                 <Button variant="outlined" color="secondary" type="submit" onClick={addJoke}>Add Joke</Button>

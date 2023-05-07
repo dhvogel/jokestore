@@ -12,6 +12,7 @@ interface Props {
   setCategories: React.Dispatch<any>;
   savedCategories: any;
   setSavedCategories: React.Dispatch<any>;
+  jokeAdded: string;
 }
 
 export const categoryConverter = {
@@ -45,7 +46,7 @@ export default function FixedTags({ db, user, categories, setCategories, savedCa
   return (
     <Autocomplete
       multiple
-      id="fixed-tags-demo"
+      fullWidth
       value={categories}
       onChange={(event, newValue) => {
         setCategories([
@@ -74,9 +75,8 @@ export default function FixedTags({ db, user, categories, setCategories, savedCa
         }
         const stringOption : string = option
         return stringOption.toUpperCase()}}
-      style={{ width: 500 }}
       renderInput={(params) => (
-        <TextField {...params} label="Categories" placeholder="Categories" />
+         <TextField {...params} label="Categories" placeholder="Categories"  fullWidth />
       )}
     />
   );
