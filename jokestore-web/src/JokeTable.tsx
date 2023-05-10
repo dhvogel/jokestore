@@ -9,6 +9,7 @@ import TableRow from '@mui/material/TableRow';
 import Paper from '@mui/material/Paper';
 import { Box, Chip, IconButton, TextField, Toolbar } from '@mui/material';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
+import SearchIcon from '@mui/icons-material/Search';
 import DeleteIcon from '@mui/icons-material/Delete';
 import JokeCreateForm from './JokeCreateForm';
 import { Database, getDatabase, ref, onValue, set } from "firebase/database";
@@ -70,7 +71,11 @@ export const jokeConverter = {
 
 export default function JokeTable({ db, user }: Props) {
   const [showForm, setShowForm] = React.useState(false);
+  const [showJokeSearch, setShowJokeSearch] = React.useState(false);
+  const [showCategorySearch, setShowCategorySearch] = React.useState(false);
   const [jokes, setJokes] = React.useState<Joke[]>([]);
+  const [filteredJokes, setFilteredJokes] = React.useState<Joke[]>([]);
+  const [filteredCategories, setFilteredCategories] = React.useState<Joke[]>([]);
   const [shouldUpdateJokeTable, setShouldUpdateJokeTable] = React.useState<boolean>(false);
 
   React.useEffect(() =>  {
@@ -84,12 +89,39 @@ export default function JokeTable({ db, user }: Props) {
     setShouldUpdateJokeTable(false)
   }, [db, shouldUpdateJokeTable])
 
+  React.useEffect(() => {
+    setFilteredJokes(jokes)
+    setFilteredCategories(jokes)
+  }, [jokes])
+
   const deleteJoke = async (e: React.MouseEvent, jokeid : number) => {
     const q = query(collection(db, "jokes"), where("jokeid", "==", jokeid))
     const querySnapshot = await getDocs(q)
     const jokeRef = querySnapshot.docs[0].ref
     await deleteDoc(jokeRef);
     setShouldUpdateJokeTable(true)
+  }
+
+  const filterJokes = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const value:string = event.target.value
+    setFilteredJokes(jokes.filter(joke => {
+      const fullContent:string = `${joke.setup} ${joke.punch}`
+      return fullContent.includes(value)
+   }))
+  }
+
+  const filterCategories = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const value:string = event.target.value
+    setFilteredCategories(jokes.filter(joke => {
+      const cats : string[] = joke.categories
+      let match : boolean = false
+      cats.forEach((cat) => {
+        if (cat.includes(value.toUpperCase())) {
+          match = true
+        }
+      })
+      return match
+   }))
   }
 
   return (
@@ -115,8 +147,20 @@ export default function JokeTable({ db, user }: Props) {
       <Table sx={{ minWidth: 700 }} aria-label="customized table">
         <TableHead>
           <TableRow>
-            <StyledTableCell>Joke</StyledTableCell>
-            <StyledTableCell align="right">Categories</StyledTableCell>
+            <StyledTableCell>
+              Joke
+              <IconButton aria-label="search" onClick={() => {setShowJokeSearch(!showJokeSearch)}}>
+                <SearchIcon />
+              </IconButton>
+              {showJokeSearch && <div><TextField variant="standard" size="small" onChange={filterJokes}/></div>}
+            </StyledTableCell>
+            <StyledTableCell align="right">
+              Categories
+              <IconButton aria-label="search" onClick={() => {setShowCategorySearch(!showCategorySearch)}}>
+                <SearchIcon />
+              </IconButton>
+              {showCategorySearch && <div><TextField variant="standard" size="small" onChange={filterCategories}/></div>}
+            </StyledTableCell>
             <StyledTableCell align="right">Times Used</StyledTableCell>
             <StyledTableCell align="right">Create New Version</StyledTableCell>
             <StyledTableCell align="right">Add Tag</StyledTableCell>
@@ -125,7 +169,7 @@ export default function JokeTable({ db, user }: Props) {
           </TableRow>
         </TableHead>
         <TableBody>
-          {jokes.map((joke) => (
+          {filteredCategories.filter((c) => filteredJokes.includes(c)).map((joke) => (
             <StyledTableRow key={joke.jokeid}>
               <StyledTableCell component="th" scope="row">
                 {joke.setup} <b>{joke.punch}</b>
